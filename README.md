@@ -559,3 +559,38 @@ To deploy an application with ArgoCD, you can follow these steps, which I'll out
 1. **Cleanup AWS EC2 Instances:**
     - Terminate AWS EC2 instances that are no longer needed.
     - Terminate EKS Cluster, Nodegroup and LoadBalancers.
+
+# **E2E Steps Followed:**
+```
+1) Create EC2 instance of t2.2xlarge of ubuntu flavour.
+2) Ssh to EC2 
+3) Install AWSCI
+4) Install Jenkins and running on port 8080
+5) Install Docker
+6) Install Eksctl
+7) Install kubectl
+8) Install Helm
+9) Install Trivy
+10) Install Docker Scout
+11) Login to Jenkisn and install plugins like docker/dependency/prometheus/sonar
+12) Setup credentials for git/sonar
+13) Setup tools for sonar and dependency
+14) Run sonarqube using docker on port 9000
+14) create dockerhub credentials and repository
+15) Create jenkins job from am2308/DevSecops with OWASP/Trivy/Scout and pushed docker image to docker hub
+16) Install Prometheus
+17) Install node-exporter
+18) Change prometheus.yaml to add job for node-exporter and jenkins
+19) Install grafana
+20) Add prometheus as datasource
+21) Create dashboard for Jenkins and Node exporter
+22) Create EKS cluster
+23) Add OIDC
+24) Creare node group
+25) Add prometheus community helm chart
+26) Install prometheus-node-exporter using helm
+27) Add that as job in promethues.yaml and open port 9100 in EKS node SG
+28) Install argocd
+29) Connect with git and create app
+30) Whitlist port 5100 in EKS node group and EKS cluster SG
+```
