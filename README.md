@@ -120,6 +120,13 @@ curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | 
 docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
 ```
 
+## Running nexux:
+
+```
+docker run -d -p 8081:8081 --name nexus --user 0 -v /nexus-data:/nexus-data sonatype/nexus3
+docker exec nexus cat /nexus-data/admin.password
+```
+
 
 ## Jenkins Pipeline Script:
 
