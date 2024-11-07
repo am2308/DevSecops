@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-5100-only
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: myapp  # Ensure this label matches your application pods
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 5100  # Only allow traffic on port 5100
