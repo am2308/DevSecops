@@ -5,7 +5,7 @@ metadata:
   labels:
     app: background-remover-python-app
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: background-remover-python-app
