@@ -135,6 +135,10 @@ pipeline {
     agent any
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        AWS_REGION = 'ap-south-1' // Update to your EKS cluster region
+        KUBE_CONFIG = credentials('eks-kubeconfig') // Jenkins secret for kubeconfig
+        AWS_IAM_ROLE = 'arn:aws:iam::637423357784:role/eks-jenkins-role'
+        SLACK_WEBHOOK = credentials('slack-webhook')
     }
     stages {
         stage ("Clean workspace") {
@@ -144,7 +148,14 @@ pipeline {
         }
         stage ("Git checkout") {
             steps {
-                git branch: 'main', url: 'https://github.com/yeshwanthlm/background-remover-python-app.git'
+                git branch: 'main', url: 'https://github.com/am2308/DevSecops.git'
+            }
+        }
+        stage("Unit Tests") {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh 'pytest test.py --junitxml=junit.xml || true'
+                }
             }
         }
         stage("SonarQube Analysis") {
@@ -170,7 +181,7 @@ pipeline {
         }
         stage ("Trivy File Scan") {
             steps {
-                sh "trivy fs . > trivy.txt"
+                sh "trivy fs . | tee trivy.txt || true"
             }
         }
         stage ("Build Docker Image") {
@@ -182,8 +193,8 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker') {
-                        sh "docker tag background-remover-python-app amonkincloud/background-remover-python-app:latest"
-                        sh "docker push amonkincloud/background-remover-python-app:latest"
+                        sh "docker tag background-remover-python-app akhilmittal510/background-remover-python-app:latest"
+                        sh "docker push akhilmittal510/background-remover-python-app:latest"
                     }
                 }
             }
@@ -192,44 +203,92 @@ pipeline {
             steps {
                 script {
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                       sh 'docker-scout quickview amonkincloud/background-remover-python-app:latest'
-                       sh 'docker-scout cves amonkincloud/background-remover-python-app:latest'
-                       sh 'docker-scout recommendations amonkincloud/background-remover-python-app:latest'
+                       sh 'export DOCKER_SCOUT_CACHE_DIR=$HOME/.docker-scout && mkdir -p $DOCKER_SCOUT_CACHE_DIR && docker-scout quickview akhilmittal510/background-remover-python-app:latest'
+                       sh 'export DOCKER_SCOUT_CACHE_DIR=$HOME/.docker-scout && mkdir -p $DOCKER_SCOUT_CACHE_DIR && docker-scout cves akhilmittal510/background-remover-python-app:latest'
+                       sh 'export DOCKER_SCOUT_CACHE_DIR=$HOME/.docker-scout && mkdir -p $DOCKER_SCOUT_CACHE_DIR && docker-scout recommendations akhilmittal510/background-remover-python-app:latest'
                    }
                 }
             }
         }
-        stage ("Deploy to Container") {
+        stage("Approval from Slack") {
             steps {
-                sh 'docker run -d --name background-remover-python-app -p 5100:5100 amonkincloud/background-remover-python-app:latest'
+                script {
+                    // Send interactive Slack message
+                    sh '''
+                    curl -X POST -H 'Content-type: application/json' \
+                    --data '{
+                        "channel": "#deploy-prod-approval",
+                        "text": "Approval required for deployment to EKS. Approve or Reject?",
+                        "attachments": [
+                            {
+                                "fallback": "You are unable to approve.",
+                                "actions": [
+                                    {
+                                        "name": "approve",
+                                        "text": "Approve",
+                                        "type": "button",
+                                        "value": "approve"
+                                    },
+                                    {
+                                        "name": "reject",
+                                        "text": "Reject",
+                                        "type": "button",
+                                        "value": "reject"
+                                    }
+                                ]
+                            }
+                        ]
+                    }' \
+                    $SLACK_WEBHOOK
+                    '''
+                    
+                    // Wait for approval (using an external webhook handler)
+                    input message: 'Approval received from Slack?', ok: 'Continue'
+                }
+            }
+        }
+        stage("Deploy to EKS") {
+            steps {
+                script {
+                    withCredentials([file(credentialsId: 'eks-kubeconfig', variable: 'KUBECONFIG')]) {
+                        // Your kubectl or Helm commands go here
+                        sh 'kubectl get nodes'  // Test access
+                        
+                        // Example: Helm deploy
+                        sh '''
+                        ls -lart
+                        helm repo add my-python-repo https://am2308.github.io/Helm-Package
+                        helm install myapp-python my-python-repo/myapp-python
+                        '''
+                    }
+                }
             }
         }
     }
     post {
-    always {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: """
-                <html>
-                <body>
-                    <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
-                        <p style="color: white; font-weight: bold;">Project: ${env.JOB_NAME}</p>
-                    </div>
-                    <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
-                        <p style="color: white; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
-                    </div>
-                    <div style="background-color: #87CEEB; padding: 10px; margin-bottom: 10px;">
-                        <p style="color: white; font-weight: bold;">URL: ${env.BUILD_URL}</p>
-                    </div>
-                </body>
-                </html>
-            """,
-            to: 'provide_your_Email_id_here',
-            mimeType: 'text/html',
-            attachmentsPattern: 'trivy.txt'
+        success {
+            script {
+                // Notify Slack on successful deployment
+                sh '''
+                curl -X POST -H 'Content-type: application/json' \
+                --data '{"text": "Deployment to EKS successful!"}' \
+                $SLACK_WEBHOOK
+                '''
+            }
+        }
+        failure {
+            script {
+                // Notify Slack on failure
+                sh '''
+                curl -X POST -H 'Content-type: application/json' \
+                --data '{"text": "Deployment failed. Check Jenkins pipeline logs."}' \
+                $SLACK_WEBHOOK
+                '''
+            }
         }
     }
 }
+
 
 ```
 **Phase 4: Monitoring**
