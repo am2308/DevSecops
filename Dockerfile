@@ -7,7 +7,8 @@ WORKDIR /app
 # Copy the requirements.txt file to the container
 COPY requirements.txt .
 
-# Install the required packages
+
+# Force reinstall packages to avoid using cache
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container at /app
