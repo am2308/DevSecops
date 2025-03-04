@@ -3,5 +3,6 @@ Pillow==9.1.0
 gunicorn==20.1.0
 Flask==2.3.3
 Werkzeug==2.3.7
+onnxruntime
 
 
