@@ -5,7 +5,7 @@ metadata:
   labels:
     app: background-remover-python-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: background-remover-python-app
@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: background-remover-python-app
-        image: akhilmittal510/background-remover-python-app:lat
+        image: akhilmittal510/background-remover-python-app:latest
         ports:
         - containerPort: 5100
