@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: background-remover-python-app
-        image: akhilmittal510/background-remover-python-app:latest
+        image: akhilmittal510/background-remover-python-app:la
         ports:
         - containerPort: 5100
